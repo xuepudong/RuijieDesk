@@ -69,6 +69,92 @@ class _DesktopTabPageState extends State<DesktopTabPage> {
   void initState() {
     super.initState();
     // HardwareKeyboard.instance.addHandler(_handleKeyEvent);
+
+    // Check if unlock-pin is configured
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkUnlockPin();
+    });
+  }
+
+  void _checkUnlockPin() async {
+    final configuredPin = bind.mainGetBuiltinOption(key: 'unlock-pin');
+    if (configuredPin.isEmpty || configuredPin == 'N') {
+      return; // No PIN configured, allow access
+    }
+
+    // Show PIN dialog and block until correct PIN is entered
+    await _showPinDialog(configuredPin);
+  }
+
+  Future<void> _showPinDialog(String correctPin) async {
+    final TextEditingController pinController = TextEditingController();
+    String errorMsg = '';
+    bool pinVerified = false;
+
+    while (!pinVerified) {
+      final result = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext dialogContext) {
+          return StatefulBuilder(
+            builder: (context, setState) {
+              return WillPopScope(
+                onWillPop: () async => false, // Prevent dialog dismissal
+                child: AlertDialog(
+                  title: Text(translate('Enter PIN to unlock')),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: pinController,
+                        obscureText: true,
+                        autofocus: true,
+                        decoration: InputDecoration(
+                          labelText: translate('PIN Code'),
+                          errorText: errorMsg.isEmpty ? null : errorMsg,
+                        ),
+                        onSubmitted: (value) {
+                          Navigator.of(dialogContext).pop(true);
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        translate('This application is locked. Enter the correct PIN to continue.'),
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        windowManager.close();
+                      },
+                      child: Text(translate('Exit')),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(dialogContext).pop(true);
+                      },
+                      child: Text(translate('OK')),
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+        },
+      );
+
+      if (result == true) {
+        final enteredPin = pinController.text.trim();
+        if (enteredPin == correctPin) {
+          pinVerified = true;
+        } else {
+          errorMsg = translate('Incorrect PIN. Please try again.');
+          pinController.clear();
+        }
+      }
+    }
   }
 
   /*
