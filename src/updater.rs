@@ -82,6 +82,19 @@ fn start_auto_update_check() -> Sender<UpdateMsg> {
 }
 
 fn start_auto_update_check_(rx_msg: Receiver<UpdateMsg>) {
+    // Check if update checking is disabled via custom config
+    let disable_update = config::BUILTIN_SETTINGS
+        .read()
+        .unwrap()
+        .get(config::keys::OPTION_DISABLE_CHECK_UPDATE)
+        .map(|v| v == "Y")
+        .unwrap_or(false);
+
+    if disable_update {
+        log::info!("Automatic update checking is disabled by configuration");
+        return;
+    }
+
     std::thread::sleep(Duration::from_secs(30));
     if let Err(e) = check_update(false) {
         log::error!("Error checking for updates: {}", e);
@@ -118,6 +131,19 @@ fn start_auto_update_check_(rx_msg: Receiver<UpdateMsg>) {
 }
 
 fn check_update(manually: bool) -> ResultType<()> {
+    // Check if update checking is disabled via custom config
+    let disable_update = config::BUILTIN_SETTINGS
+        .read()
+        .unwrap()
+        .get(config::keys::OPTION_DISABLE_CHECK_UPDATE)
+        .map(|v| v == "Y")
+        .unwrap_or(false);
+
+    if disable_update {
+        log::info!("Update checking is disabled by configuration");
+        return Ok(());
+    }
+
     #[cfg(target_os = "windows")]
     let is_msi = crate::platform::is_msi_installed()?;
     if !(manually || config::Config::get_bool_option(config::keys::OPTION_ALLOW_AUTO_UPDATE)) {

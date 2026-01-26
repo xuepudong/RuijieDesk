@@ -931,13 +931,18 @@ void setPasswordDialog({VoidCallback? notEmptyCallback}) async {
       });
       final pass = p0.text.trim();
       if (pass.isNotEmpty) {
-        final Iterable violations = rules.where((r) => !r.validate(pass));
-        if (violations.isNotEmpty) {
-          setState(() {
-            errMsg0 =
-                '${translate('Prompt')}: ${violations.map((r) => r.name).join(', ')}';
-          });
-          return;
+        // Check if simple password policy is allowed via custom config
+        final allowSimplePassword = bind.mainGetBuiltinOption(key: 'pass-policy') == 'Y';
+
+        if (!allowSimplePassword) {
+          final Iterable violations = rules.where((r) => !r.validate(pass));
+          if (violations.isNotEmpty) {
+            setState(() {
+              errMsg0 =
+                  '${translate('Prompt')}: ${violations.map((r) => r.name).join(', ')}';
+            });
+            return;
+          }
         }
       }
       if (p1.text.trim() != pass) {
