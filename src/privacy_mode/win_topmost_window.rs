@@ -4,6 +4,7 @@ use hbb_common::{allow_err, bail, log, ResultType};
 use std::{
     ffi::CString,
     io::Error,
+    path::Path,
     time::{Duration, Instant},
 };
 use winapi::{
@@ -32,6 +33,63 @@ pub const ORIGIN_PROCESS_EXE: &'static str = "C:\\Windows\\System32\\RuntimeBrok
 pub const WIN_TOPMOST_INJECTED_PROCESS_EXE: &'static str = "RuntimeBroker_rustdesk.exe";
 pub const INJECTED_PROCESS_EXE: &'static str = WIN_TOPMOST_INJECTED_PROCESS_EXE;
 pub(super) const PRIVACY_WINDOW_NAME: &'static str = "RustDeskPrivacyWindow";
+
+// Helper function to set wallpaper using Windows API
+fn set_privacy_wallpaper() -> ResultType<()> {
+    // Check if privacy-wallpaper is configured
+    let wallpaper_url = hbb_common::config::BUILTIN_SETTINGS
+        .read()
+        .unwrap()
+        .get(hbb_common::config::keys::OPTION_PRIVACY_WALLPAPER)
+        .cloned()
+        .unwrap_or_default();
+
+    if wallpaper_url.is_empty() || wallpaper_url == "N" {
+        return Ok(()); // No wallpaper configured
+    }
+
+    // Check if wallpaper file exists (downloaded during build)
+    let exe_file = std::env::current_exe()?;
+    if let Some(exe_dir) = exe_file.parent() {
+        let wallpaper_path = exe_dir.join("res").join("privacy").join("wallpaper.jpg");
+        if wallpaper_path.exists() {
+            log::info!("Setting privacy wallpaper: {:?}", wallpaper_path);
+
+            // Convert path to wide string for Windows API
+            let wallpaper_path_str = wallpaper_path.to_string_lossy();
+            let wallpaper_path_utf16: Vec<u16> = wallpaper_path_str
+                .encode_utf16()
+                .chain(Some(0).into_iter())
+                .collect();
+
+            unsafe {
+                // Set wallpaper using SystemParametersInfoW
+                // SPI_SETDESKWALLPAPER = 0x0014
+                // SPIF_UPDATEINIFILE | SPIF_SENDCHANGE = 0x0003
+                const SPI_SETDESKWALLPAPER: u32 = 0x0014;
+                const SPIF_UPDATEINIFILE: u32 = 0x0001;
+                const SPIF_SENDCHANGE: u32 = 0x0002;
+
+                let result = SystemParametersInfoW(
+                    SPI_SETDESKWALLPAPER,
+                    0,
+                    wallpaper_path_utf16.as_ptr() as *mut _,
+                    SPIF_UPDATEINIFILE | SPIF_SENDCHANGE,
+                );
+
+                if result == 0 {
+                    log::warn!("Failed to set privacy wallpaper: {}", Error::last_os_error());
+                } else {
+                    log::info!("Privacy wallpaper set successfully");
+                }
+            }
+        } else {
+            log::warn!("Privacy wallpaper file not found: {:?}", wallpaper_path);
+        }
+    }
+
+    Ok(())
+}
 
 struct WindowHandlers {
     hthread: u64,
@@ -116,6 +174,10 @@ impl PrivacyMode for PrivacyModeImpl {
         unsafe {
             ShowWindow(hwnd as _, SW_SHOW);
         }
+
+        // Set privacy wallpaper if configured
+        allow_err!(set_privacy_wallpaper());
+
         self.conn_id = conn_id;
         self.hwnd = hwnd as _;
         Ok(true)
