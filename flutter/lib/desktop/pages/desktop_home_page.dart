@@ -93,7 +93,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       buildTip(context),
       if (!isOutgoingOnly) buildIDBoard(context),
       // Check if password panel should be hidden via custom config
-      if (!isOutgoingOnly && bind.mainGetBuiltinOption(key: 'hide-password') != 'Y')
+      if (!isOutgoingOnly && bind.mainGetBuildinOption(key: 'hide-password') != 'Y')
         buildPasswordBoard(context),
       FutureBuilder<Widget>(
         future: Future.value(
@@ -345,7 +345,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                         ),
                       ),
                       // Add explicit copy button if configured
-                      if (showOneTime && bind.mainGetBuiltinOption(key: 'add-copy') == 'Y')
+                      if (showOneTime && bind.mainGetBuildinOption(key: 'add-copy') == 'Y')
                         InkWell(
                           child: Tooltip(
                             message: translate('Copy'),
@@ -950,7 +950,7 @@ void setPasswordDialog({VoidCallback? notEmptyCallback}) async {
       final pass = p0.text.trim();
       if (pass.isNotEmpty) {
         // Check if simple password policy is allowed via custom config
-        final allowSimplePassword = bind.mainGetBuiltinOption(key: 'pass-policy') == 'Y';
+        final allowSimplePassword = bind.mainGetBuildinOption(key: 'pass-policy') == 'Y';
 
         if (!allowSimplePassword) {
           final Iterable violations = rules.where((r) => !r.validate(pass));

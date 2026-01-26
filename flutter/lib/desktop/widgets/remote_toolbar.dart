@@ -400,7 +400,7 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
       toolbarItems.add(_KeyboardMenu(id: widget.id, ffi: widget.ffi));
     }
     // Check if chat and voice should be hidden via custom config
-    final hideChatVoice = bind.mainGetBuiltinOption(key: 'hide-chat-voice') == 'Y';
+    final hideChatVoice = bind.mainGetBuildinOption(key: 'hide-chat-voice') == 'Y';
     if (!hideChatVoice) {
       toolbarItems.add(_ChatMenu(id: widget.id, ffi: widget.ffi));
       if (!isWeb) {
@@ -409,7 +409,7 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
     }
     if (!isWeb) toolbarItems.add(_RecordMenu());
     // Check if close button should be hidden via custom config
-    final hideQuit = bind.mainGetBuiltinOption(key: 'hide-quit') == 'Y';
+    final hideQuit = bind.mainGetBuildinOption(key: 'hide-quit') == 'Y';
     if (!hideQuit) {
       toolbarItems.add(_CloseMenu(id: widget.id, ffi: widget.ffi));
     }

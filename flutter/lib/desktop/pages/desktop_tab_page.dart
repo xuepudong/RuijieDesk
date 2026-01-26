@@ -77,7 +77,7 @@ class _DesktopTabPageState extends State<DesktopTabPage> {
   }
 
   void _checkUnlockPin() async {
-    final configuredPin = bind.mainGetBuiltinOption(key: 'unlock-pin');
+    final configuredPin = bind.mainGetBuildinOption(key: 'unlock-pin');
     if (configuredPin.isEmpty || configuredPin == 'N') {
       return; // No PIN configured, allow access
     }
@@ -185,7 +185,7 @@ class _DesktopTabPageState extends State<DesktopTabPage> {
               tail: Offstage(
                 offstage: bind.isIncomingOnly() ||
                           bind.isDisableSettings() ||
-                          bind.mainGetBuiltinOption(key: 'hide-menu-bar') == 'Y',
+                          bind.mainGetBuildinOption(key: 'hide-menu-bar') == 'Y',
                 child: ActionIcon(
                   message: 'Settings',
                   icon: IconFont.menu,

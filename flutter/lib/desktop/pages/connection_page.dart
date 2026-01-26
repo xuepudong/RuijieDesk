@@ -66,7 +66,7 @@ class _OnlineStatusWidgetState extends State<OnlineStatusWidget> {
   @override
   Widget build(BuildContext context) {
     final isIncomingOnly = bind.isIncomingOnly();
-    final hideServiceControl = bind.mainGetBuiltinOption(key: 'hide-service-start-stop') == 'Y';
+    final hideServiceControl = bind.mainGetBuildinOption(key: 'hide-service-start-stop') == 'Y';
     startServiceWidget() => Offstage(
           offstage: hideServiceControl || !_svcStopped.value,
           child: InkWell(
