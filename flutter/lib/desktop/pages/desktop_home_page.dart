@@ -92,7 +92,9 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       ),
       buildTip(context),
       if (!isOutgoingOnly) buildIDBoard(context),
-      if (!isOutgoingOnly) buildPasswordBoard(context),
+      // Check if password panel should be hidden via custom config
+      if (!isOutgoingOnly && bind.mainGetBuiltinOption(key: 'hide-password') != 'Y')
+        buildPasswordBoard(context),
       FutureBuilder<Widget>(
         future: Future.value(
             Obx(() => buildHelpCards(stateGlobal.updateUrl.value))),
@@ -342,6 +344,22 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                           ).workaroundFreezeLinuxMint(),
                         ),
                       ),
+                      // Add explicit copy button if configured
+                      if (showOneTime && bind.mainGetBuiltinOption(key: 'add-copy') == 'Y')
+                        InkWell(
+                          child: Tooltip(
+                            message: translate('Copy'),
+                            child: Icon(
+                              Icons.copy,
+                              color: Color(0xFFDDDDDD),
+                              size: 20,
+                            ).marginOnly(right: 8, top: 4),
+                          ),
+                          onTap: () {
+                            Clipboard.setData(ClipboardData(text: model.serverPasswd.text));
+                            showToast(translate("Copied"));
+                          },
+                        ),
                       if (showOneTime)
                         AnimatedRotationWidget(
                           onPressed: () => bind.mainUpdateTemporaryPassword(),

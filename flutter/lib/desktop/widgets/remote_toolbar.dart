@@ -408,7 +408,11 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
       }
     }
     if (!isWeb) toolbarItems.add(_RecordMenu());
-    toolbarItems.add(_CloseMenu(id: widget.id, ffi: widget.ffi));
+    // Check if close button should be hidden via custom config
+    final hideQuit = bind.mainGetBuiltinOption(key: 'hide-quit') == 'Y';
+    if (!hideQuit) {
+      toolbarItems.add(_CloseMenu(id: widget.id, ffi: widget.ffi));
+    }
     final toolbarBorderRadius = BorderRadius.all(Radius.circular(4.0));
     return Column(
       mainAxisSize: MainAxisSize.min,
