@@ -1388,6 +1388,14 @@ fn get_after_install(
 }
 
 pub fn install_me(options: &str, path: String, silent: bool, debug: bool) -> ResultType<()> {
+    // Check if uninstall shortcut creation should be skipped
+    let skip_uninstall_shortcut = hbb_common::config::BUILTIN_SETTINGS
+        .read()
+        .unwrap()
+        .get(hbb_common::config::keys::OPTION_NO_UNINSTALL)
+        .map(|v| v == "Y")
+        .unwrap_or(false);
+
     let uninstall_str = get_uninstall(false, false);
     let mut path = path.trim_end_matches('\\').to_owned();
     let (subkey, _path, start_menu, exe) = get_default_install_info();
@@ -1431,9 +1439,10 @@ oLink.Save
     .unwrap_or("")
     .to_owned();
     // https://superuser.com/questions/392061/how-to-make-a-shortcut-from-cmd
-    let uninstall_shortcut = write_cmds(
-        format!(
-            "
+    let uninstall_shortcut = if !skip_uninstall_shortcut {
+        write_cmds(
+            format!(
+                "
 Set oWS = WScript.CreateObject(\"WScript.Shell\")
 sLinkFile = \"{tmp_path}\\Uninstall {app_name}.lnk\"
 Set oLink = oWS.CreateShortcut(sLinkFile)
@@ -1442,13 +1451,16 @@ Set oLink = oWS.CreateShortcut(sLinkFile)
     oLink.IconLocation = \"msiexec.exe\"
 oLink.Save
         "
-        ),
-        "vbs",
-        "uninstall_shortcut",
-    )?
-    .to_str()
-    .unwrap_or("")
-    .to_owned();
+            ),
+            "vbs",
+            "uninstall_shortcut",
+        )?
+        .to_str()
+        .unwrap_or("")
+        .to_owned()
+    } else {
+        String::new()
+    };
     let tray_shortcut = get_tray_shortcut(&exe, &tmp_path)?;
     let mut reg_value_desktop_shortcuts = "0".to_owned();
     let mut reg_value_start_menu_shortcuts = "0".to_owned();
@@ -1463,11 +1475,16 @@ oLink.Save
         reg_value_desktop_shortcuts = "1".to_owned();
     }
     if options.contains("startmenu") {
+        let uninstall_copy = if !skip_uninstall_shortcut {
+            format!("copy /Y \"{tmp_path}\\Uninstall {app_name}.lnk\" \"{start_menu}\\\"")
+        } else {
+            String::new()
+        };
         shortcuts = format!(
             "{shortcuts}
 md \"{start_menu}\"
 copy /Y \"{tmp_path}\\{app_name}.lnk\" \"{start_menu}\\\"
-copy /Y \"{tmp_path}\\Uninstall {app_name}.lnk\" \"{start_menu}\\\"
+{uninstall_copy}
      "
         );
         reg_value_start_menu_shortcuts = "1".to_owned();
@@ -1483,8 +1500,9 @@ copy /Y \"{tmp_path}\\Uninstall {app_name}.lnk\" \"{start_menu}\\\"
     // https://www.windowscentral.com/how-edit-registry-using-command-prompt-windows-10
     // https://www.tenforums.com/tutorials/70903-add-remove-allowed-apps-through-windows-firewall-windows-10-a.html
     // Note: without if exist, the bat may exit in advance on some Windows7 https://github.com/rustdesk/rustdesk/issues/895
-    let dels = format!(
-        "
+    let dels = if !skip_uninstall_shortcut {
+        format!(
+            "
 if exist \"{mk_shortcut}\" del /f /q \"{mk_shortcut}\"
 if exist \"{uninstall_shortcut}\" del /f /q \"{uninstall_shortcut}\"
 if exist \"{tray_shortcut}\" del /f /q \"{tray_shortcut}\"
@@ -1492,7 +1510,17 @@ if exist \"{tmp_path}\\{app_name}.lnk\" del /f /q \"{tmp_path}\\{app_name}.lnk\"
 if exist \"{tmp_path}\\Uninstall {app_name}.lnk\" del /f /q \"{tmp_path}\\Uninstall {app_name}.lnk\"
 if exist \"{tmp_path}\\{app_name} Tray.lnk\" del /f /q \"{tmp_path}\\{app_name} Tray.lnk\"
         "
-    );
+        )
+    } else {
+        format!(
+            "
+if exist \"{mk_shortcut}\" del /f /q \"{mk_shortcut}\"
+if exist \"{tray_shortcut}\" del /f /q \"{tray_shortcut}\"
+if exist \"{tmp_path}\\{app_name}.lnk\" del /f /q \"{tmp_path}\\{app_name}.lnk\"
+if exist \"{tmp_path}\\{app_name} Tray.lnk\" del /f /q \"{tmp_path}\\{app_name} Tray.lnk\"
+        "
+        )
+    };
     let src_exe = std::env::current_exe()?.to_str().unwrap_or("").to_string();
 
     // potential bug here: if run_cmd cancelled, but config file is changed.
@@ -1524,6 +1552,11 @@ copy /Y \"{tmp_path}\\{app_name} Tray.lnk\" \"%PROGRAMDATA%\\Microsoft\\Windows\
     // Remember to check if `update_me` need to be changed if changing the `cmds`.
     // No need to merge the existing dup code, because the code in these two functions are too critical.
     // New code should be written in a common function.
+    let uninstall_cmds = if !skip_uninstall_shortcut {
+        format!("cscript \"{uninstall_shortcut}\"\n{tray_shortcuts}\n{shortcuts}\ncopy /Y \"{tmp_path}\\Uninstall {app_name}.lnk\" \"{path}\\\"")
+    } else {
+        format!("{tray_shortcuts}\n{shortcuts}")
+    };
     let cmds = format!(
         "
 {uninstall_str}
@@ -1545,10 +1578,7 @@ reg add {subkey} /f /v UninstallString /t REG_SZ /d \"\\\"{exe}\\\" --uninstall\
 reg add {subkey} /f /v EstimatedSize /t REG_DWORD /d {size}
 reg add {subkey} /f /v WindowsInstaller /t REG_DWORD /d 0
 cscript \"{mk_shortcut}\"
-cscript \"{uninstall_shortcut}\"
-{tray_shortcuts}
-{shortcuts}
-copy /Y \"{tmp_path}\\Uninstall {app_name}.lnk\" \"{path}\\\"
+{uninstall_cmds}
 {dels}
 {import_config}
 {after_install}
