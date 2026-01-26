@@ -97,7 +97,9 @@ class _DesktopTabPageState extends State<DesktopTabPage> {
             body: DesktopTab(
               controller: tabController,
               tail: Offstage(
-                offstage: bind.isIncomingOnly() || bind.isDisableSettings(),
+                offstage: bind.isIncomingOnly() ||
+                          bind.isDisableSettings() ||
+                          bind.mainGetBuiltinOption(key: 'hide-menu-bar') == 'Y',
                 child: ActionIcon(
                   message: 'Settings',
                   icon: IconFont.menu,
