@@ -399,9 +399,13 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
     if (widget.ffi.connType == ConnType.defaultConn) {
       toolbarItems.add(_KeyboardMenu(id: widget.id, ffi: widget.ffi));
     }
-    toolbarItems.add(_ChatMenu(id: widget.id, ffi: widget.ffi));
-    if (!isWeb) {
-      toolbarItems.add(_VoiceCallMenu(id: widget.id, ffi: widget.ffi));
+    // Check if chat and voice should be hidden via custom config
+    final hideChatVoice = bind.mainGetBuiltinOption(key: 'hide-chat-voice') == 'Y';
+    if (!hideChatVoice) {
+      toolbarItems.add(_ChatMenu(id: widget.id, ffi: widget.ffi));
+      if (!isWeb) {
+        toolbarItems.add(_VoiceCallMenu(id: widget.id, ffi: widget.ffi));
+      }
     }
     if (!isWeb) toolbarItems.add(_RecordMenu());
     toolbarItems.add(_CloseMenu(id: widget.id, ffi: widget.ffi));

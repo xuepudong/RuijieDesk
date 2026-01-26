@@ -4052,6 +4052,25 @@ impl Connection {
     }
 
     async fn turn_off_privacy(&mut self, impl_key: String) {
+        // Check if privacy mode is locked by admin configuration
+        let privacy_locked = config::BUILTIN_SETTINGS
+            .read()
+            .unwrap()
+            .get(config::keys::OPTION_APPLY_PRIVACY)
+            .map(|v| v == "Y")
+            .unwrap_or(false);
+
+        if privacy_locked {
+            log::warn!("Privacy mode is locked by administrator configuration");
+            let msg_out = crate::common::make_privacy_mode_msg_with_details(
+                back_notification::PrivacyModeState::PrvOffFailed,
+                "Privacy mode is locked by administrator".to_string(),
+                impl_key,
+            );
+            self.send(msg_out).await;
+            return;
+        }
+
         let msg_out = if !privacy_mode::is_privacy_mode_supported() {
             crate::common::make_privacy_mode_msg_with_details(
                 back_notification::PrivacyModeState::PrvNotSupported,
