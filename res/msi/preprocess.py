@@ -12,6 +12,13 @@ import platform
 from pathlib import Path
 from itertools import chain
 import shutil
+import os
+
+# Force UTF-8 encoding for stdout/stderr on Windows
+if platform.system() == 'Windows':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 g_indent_unit = "\t"
 g_version = ""
